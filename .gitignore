@@ -1,0 +1,11 @@
+
+.vscode/
+*.pt
+*.pyc
+*.pth
+*.tar
+*.dat
+*.txt
+*.h5
+
+
