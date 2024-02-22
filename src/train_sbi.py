@@ -15,12 +15,20 @@ from utils.logs import log
 from utils.funcs import load_json
 from datetime import datetime
 from tqdm import tqdm
-from model import Detector
+from model import Detector,patchwiseDetectorwithfreq, deepfakesclassifier
 
 def compute_accuray(pred,true):
     pred_idx=pred.argmax(dim=1).cpu().data.numpy()
     tmp=pred_idx==true.cpu().numpy()
     return sum(tmp)/len(pred_idx)
+
+def load_model(PATH = "./models/pretrained_pcl_effnet.pth"):
+    model = patchwiseDetectorwithfreq()
+    model.load_state_dict(torch.load(PATH))
+    # for param in model.parameters():
+    #     param.requires_grad = False
+    # feature_extractor = model.net
+    return model
 
 def main(args):
     cfg=load_json(args.config)
@@ -42,9 +50,9 @@ def main(args):
     val_dataset=SBI_Dataset(phase='val',image_size=image_size)
    
     train_loader=torch.utils.data.DataLoader(train_dataset,
-                        batch_size=batch_size//2,
+                        batch_size=batch_size,
                         shuffle=True,
-                        collate_fn=train_dataset.collate_fn,
+                        collate_fn=train_dataset.pretrain_collate_fn,
                         num_workers=4,
                         pin_memory=True,
                         drop_last=True,
@@ -53,14 +61,14 @@ def main(args):
     val_loader=torch.utils.data.DataLoader(val_dataset,
                         batch_size=batch_size,
                         shuffle=False,
-                        collate_fn=val_dataset.collate_fn,
+                        collate_fn=val_dataset.pretrain_collate_fn,
                         num_workers=4,
                         pin_memory=True,
                         worker_init_fn=val_dataset.worker_init_fn
                         )
     
-    model=Detector()
-    
+    feature_extractor=load_model()
+    model = deepfakesclassifier(feature_extractor)
     model=model.to('cuda')
     
     

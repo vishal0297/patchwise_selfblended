@@ -35,6 +35,62 @@ class patchwiseDetector(nn.Module):
         self.optimizer.step()
         return loss
     
+class patchwiseDetectorwithfreq(nn.Module):
+
+    def __init__(self,  dim_in=7680, feat_dim=128):
+        super(patchwiseDetectorwithfreq, self).__init__()
+        self.net=EfficientNet.from_pretrained("efficientnet-b0",num_classes=2)
+        self.head = nn.Sequential(
+                nn.Linear(dim_in, dim_in),
+                nn.ReLU(inplace=True),
+                nn.Linear(dim_in, feat_dim)
+            )
+
+    def forward(self,x):
+        spacial_feat=self.net.extract_features(x)
+        freq_artifacts = torch.abs(torch.fft.rfft2(x))
+        # print("Frequency artifact shape ", freq_artifacts.shape)
+        freq_feats = self.net.extract_features(freq_artifacts)
+        feat_space = spacial_feat.view(spacial_feat.shape[0],-1)
+        feat_freq = freq_feats.view(freq_feats.shape[0],-1)
+        feat = torch.cat((feat_space, feat_freq), dim=1)
+        # feat = feat.view(feat.shape[0], -1)
+        out = F.normalize(self.head(feat), dim=1)
+        return out
+    
+class deepfakesclassifier(nn.Module):
+
+    def __init__(self,  feature_extractor,dim_in=7680):
+        super(deepfakesclassifier, self).__init__()
+        self.net=feature_extractor
+        self.averagepool = nn.AdaptiveAvgPool2d(1)
+        self.head = nn.Sequential(
+                nn.Dropout(0.2),
+                nn.Linear(dim_in, 2048),
+                nn.ReLU(),
+                nn.Linear(2048, 2)
+            )
+        self.cel=nn.CrossEntropyLoss()
+        self.optimizer=torch.optim.SGD(self.parameters(),lr=0.0001, momentum=0.9)
+
+    def forward(self,x):
+        feat=self.net(x)
+        # freq_artifacts = torch.abs(torch.fft.rfft2(x))
+        # freq_feats = self.net.extract_features(freq_artifacts)
+        # feat_space = spacial_feat.view(spacial_feat.shape[0],-1)
+        # feat_freq = freq_feats.view(freq_feats.shape[0],-1)
+        # feat = torch.cat((feat_space, feat_freq), dim=1)
+        out = self.head(feat)
+        return out
+    
+    def training_step(self,x,target):
+        pred_cls=self(x)
+        loss=self.cel(pred_cls,target)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return pred_cls
+
 
 class Detector(nn.Module):
 

@@ -45,7 +45,7 @@ class Trainer:
         self.model = model.to(self.gpu_id)
         self.train_data = train_data
         self.optimizer = optimizer
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 30, 1, eta_min=1e-5, last_epoch=-1)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.5) #torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 30, 1, eta_min=1e-5, last_epoch=-1)
         self.save_every = save_every
         self.model = DDP(model, device_ids=[self.gpu_id],find_unused_parameters=True)
         self.loss_func = loss
@@ -74,7 +74,7 @@ class Trainer:
 
     def _save_checkpoint(self, epoch):
         ckp = self.model.module.state_dict()
-        PATH = "pretrained_pcl_t0.7_lrs.pt"
+        PATH = "pretrained_pcl_steplr_t0.05.pt"
         torch.save(ckp, PATH)
         print(f"Epoch {epoch} | Training checkpoint saved at {PATH}")
 
@@ -107,7 +107,7 @@ def main(save_every: int, total_epochs: int):
     ddp_setup()
     batch_size = 8
     dataset, model, optimizer = load_train_objs()
-    loss = losses.NTXentLoss(temperature=0.7) #SupConLoss()
+    loss = losses.NTXentLoss(temperature=0.05) #SupConLoss()
     train_data = prepare_dataloader(dataset, batch_size)
     trainer = Trainer(model, train_data, optimizer, save_every,loss,total_epochs)
     trainer.train()

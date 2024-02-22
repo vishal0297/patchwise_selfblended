@@ -59,7 +59,7 @@ class SBI_Dataset(Dataset):
 
 		self.transforms=self.get_transforms()
 		self.source_transforms = self.get_source_transforms()
-		self.multi_size = [(64,64)]*15
+		self.multi_size = [(64,64)]*10
 		crop_transforms = []
 		for s in self.multi_size:
 			RandomCrop = transforms.RandomCrop(size=s)
